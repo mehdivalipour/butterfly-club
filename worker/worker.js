@@ -68,7 +68,8 @@ function parseDecision(text) {
   const decision = parsed.decision === "accept" ? "accept" : "reject";
   const score = Math.max(0, Math.min(100, Number(parsed.score) || 0));
   const reason = typeof parsed.reason === "string" ? parsed.reason.slice(0, 500) : "No reason supplied.";
-  return { decision, score, reason };
+  const authenticityConcern = parsed.authenticity_concern === true;
+  return { decision, score, reason, authenticityConcern };
 }
 
 async function askOpenAI(answers, env) {
@@ -91,6 +92,12 @@ Decision rule:
 - Reject below 45, or when the answers are clearly spam, trolling, empty, copied filler, generic one-liners, or show no sincere intent to participate.
 Human review makes the final decision after shortlisting.
 
+Authenticity check:
+- Do NOT claim that you can reliably detect AI authorship.
+- However, if the answers feel highly generic, templated, over-polished, impersonal, or contain broad claims without concrete personal detail, treat that as weak authenticity and specificity.
+- If there are strong signs that the applicant did not answer in their own voice, set "authenticity_concern" to true.
+- Do not set authenticity_concern merely because the English is grammatically strong or polished.
+
 Important:
 - Do not reward prestige, job title, wealth, education, fame, English fluency, or writing polish.
 - Do not infer or use age, gender, nationality, ethnicity, religion, disability, politics, sexual orientation, health, or any other sensitive/personal characteristic.
@@ -99,7 +106,7 @@ Important:
 - Return JSON only. No markdown and no extra text.
 
 Required JSON:
-{"decision":"accept"|"reject","score":0-100,"reason":"one short internal sentence"}
+{"decision":"accept"|"reject","score":0-100,"reason":"one short internal sentence","authenticity_concern":true|false}
 `.trim();
 
   const applicantText = QUESTIONS.map((q, i) => `${i + 1}. ${q}\nAnswer: ${answers[i]}`).join("\n\n");
@@ -126,9 +133,10 @@ Required JSON:
             properties: {
               decision: { type: "string", enum: ["accept", "reject"] },
               score: { type: "integer", minimum: 0, maximum: 100 },
-              reason: { type: "string" }
+              reason: { type: "string" },
+              authenticity_concern: { type: "boolean" }
             },
-            required: ["decision", "score", "reason"]
+            required: ["decision", "score", "reason", "authenticity_concern"]
           }
         }
       },
@@ -142,7 +150,14 @@ Required JSON:
     const message = data?.error?.message || `OpenAI request failed (${response.status}).`;
     throw new Error(message);
   }
-  return parseDecision(getOutputText(data));
+  const evaluation = parseDecision(getOutputText(data));
+
+  if (evaluation.authenticityConcern && evaluation.score < 70) {
+    evaluation.decision = "reject";
+    evaluation.reason = "The answers felt too generic or templated to confidently reflect the applicant's own voice.";
+  }
+
+  return evaluation;
 }
 
 async function createApplication(env, answers, evaluation) {
@@ -282,6 +297,7 @@ export default {
         return json({
           decision: evaluation.decision,
           score: evaluation.score,
+          authenticityConcern: evaluation.authenticityConcern,
           applicationId: stored.applicationId,
           submissionToken: stored.submissionToken,
         }, 200, cors);
