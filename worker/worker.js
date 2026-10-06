@@ -1,5 +1,5 @@
 const OPENAI_URL = "https://api.openai.com/v1/responses";
-const DEFAULT_MODEL = "gpt-5.6-luna";
+const DEFAULT_MODEL = "gpt-6-luna";
 
 const QUESTIONS = [
   "Why do you want to join?",
@@ -113,7 +113,25 @@ Required JSON:
     body: JSON.stringify({
       model: env.OPENAI_MODEL || DEFAULT_MODEL,
       store: false,
-      max_output_tokens: 180,
+      max_output_tokens: 600,
+      reasoning: { effort: "minimal" },
+      text: {
+        format: {
+          type: "json_schema",
+          name: "butterfly_club_evaluation",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              decision: { type: "string", enum: ["accept", "reject"] },
+              score: { type: "integer", minimum: 0, maximum: 100 },
+              reason: { type: "string" }
+            },
+            required: ["decision", "score", "reason"]
+          }
+        }
+      },
       instructions,
       input: applicantText,
     }),
