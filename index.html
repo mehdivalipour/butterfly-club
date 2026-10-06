@@ -608,7 +608,11 @@
           setInputEnabled(true);
         } else {
           mode = "rejected";
-          addMessage("<strong>Not accepted.</strong> Maybe another time.");
+          if (result.authenticityConcern) {
+            setMessage("<strong>Not accepted.</strong> Your answers felt too generic or AI-assisted to confidently reflect your own voice. Please reapply in your own words.");
+          } else {
+            setMessage("<strong>Not accepted.</strong> Maybe another time.");
+          }
           chatInput.classList.add("hidden");
         }
       } catch (error) {
