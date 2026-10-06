@@ -53,7 +53,7 @@
     .filter{border:1px solid var(--line);background:rgba(255,255,255,.25);color:var(--muted);border-radius:999px;padding:8px 12px;cursor:pointer;font-size:12px}
     .filter.active{background:rgba(255,255,255,.66);color:var(--text);border-color:var(--line-strong)}
 
-    .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 18px}
+    .stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:0 0 18px}
     .stat{padding:16px;border:1px solid var(--line);border-radius:20px;background:rgba(255,255,255,.28);backdrop-filter:blur(12px)}
     .stat b{display:block;font-size:24px;font-weight:500}.stat span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.09em}
 
@@ -121,15 +121,17 @@
       <section class="stats">
         <div class="stat"><b id="statPending">0</b><span>Pending</span></div>
         <div class="stat"><b id="statApproved">0</b><span>Approved</span></div>
-        <div class="stat"><b id="statRejected">0</b><span>Rejected</span></div>
-        <div class="stat"><b id="statTotal">0</b><span>Total shortlisted</span></div>
+        <div class="stat"><b id="statRejected">0</b><span>Human rejected</span></div>
+        <div class="stat"><b id="statAiRejected">0</b><span>AI rejected</span></div>
+        <div class="stat"><b id="statTotal">0</b><span>Total applications</span></div>
       </section>
 
       <nav class="filters" id="filters">
         <button class="filter active" data-filter="pending">Needs review</button>
         <button class="filter" data-filter="approved">Approved</button>
-        <button class="filter" data-filter="rejected">Rejected</button>
-        <button class="filter" data-filter="all">All shortlisted</button>
+        <button class="filter" data-filter="rejected">Human rejected</button>
+        <button class="filter" data-filter="ai_rejected">AI rejected</button>
+        <button class="filter" data-filter="all">All applications</button>
       </nav>
 
       <div id="content" class="loading">Loading applications…</div>
@@ -202,10 +204,12 @@
       document.getElementById("statPending").textContent = stats.pending || 0;
       document.getElementById("statApproved").textContent = stats.approved || 0;
       document.getElementById("statRejected").textContent = stats.rejected || 0;
+      document.getElementById("statAiRejected").textContent = stats.aiRejected || 0;
       document.getElementById("statTotal").textContent = stats.total || 0;
     }
 
     function reviewBadge(app) {
+      if (app.status === "reject") return `<span class="badge rejected">AI rejected</span>`;
       if (!app.name || !app.phone) return `<span class="badge waiting">Awaiting contact</span>`;
       if (app.review_status === "approved") return `<span class="badge approved">Approved</span>`;
       if (app.review_status === "rejected") return `<span class="badge rejected">Rejected</span>`;
@@ -241,8 +245,10 @@
             <div class="review-row">
               <div class="contact">${app.name && app.phone ? `${escapeHtml(app.name)} · ${escapeHtml(app.phone)}` : "Waiting for the applicant to submit contact details."}</div>
               <div class="review-actions">
-                <button class="btn small approve" data-review="approved" data-id="${app.id}" ${!app.name || !app.phone ? "disabled" : ""}>Final Accept</button>
-                <button class="btn small reject" data-review="rejected" data-id="${app.id}">Reject</button>
+                ${app.status === "reject"
+                  ? '<span class="contact">AI rejected before contact details were requested.</span>'
+                  : `<button class="btn small approve" data-review="approved" data-id="${app.id}" ${!app.name || !app.phone ? "disabled" : ""}>Final Accept</button>
+                     <button class="btn small reject" data-review="rejected" data-id="${app.id}">Reject</button>`}
               </div>
             </div>
           </div>
