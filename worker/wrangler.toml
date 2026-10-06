@@ -1,0 +1,12 @@
+name = "butterfly-club-api"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://butterflyclub.ir"
+OPENAI_MODEL = "gpt-5.6-luna"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "butterfly-club"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
