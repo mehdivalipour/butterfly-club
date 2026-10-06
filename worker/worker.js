@@ -1,5 +1,5 @@
 const OPENAI_URL = "https://api.openai.com/v1/responses";
-const DEFAULT_MODEL = "gpt-6-luna";
+const DEFAULT_MODEL = "gpt-5.6-luna";
 
 const QUESTIONS = [
   "Why do you want to join?",
@@ -86,16 +86,18 @@ Rubric:
 
 Butterfly Club is selective, but the AI is only a first-stage shortlisting assistant, not the final judge.
 Default toward shortlisting sincere, thoughtful applicants.
+
 Decision rule:
 - Accept at 55/100 or above.
 - For scores 45–54, accept if there is clear curiosity, sincerity, originality, or a concrete contribution.
 - Reject below 45, or when the answers are clearly spam, trolling, empty, copied filler, generic one-liners, or show no sincere intent to participate.
+
 Human review makes the final decision after shortlisting.
 
 Authenticity check:
 - Do NOT claim that you can reliably detect AI authorship.
-- However, if the answers feel highly generic, templated, over-polished, impersonal, or contain broad claims without concrete personal detail, treat that as weak authenticity and specificity.
-- If there are strong signs that the applicant did not answer in their own voice, set "authenticity_concern" to true.
+- If the answers feel highly generic, templated, impersonal, or contain broad claims without concrete personal detail, treat that as weak authenticity and specificity.
+- If there are strong signs that the applicant did not answer in their own voice, set authenticity_concern to true.
 - Do not set authenticity_concern merely because the English is grammatically strong or polished.
 
 Important:
@@ -103,13 +105,19 @@ Important:
 - Do not infer or use age, gender, nationality, ethnicity, religion, disability, politics, sexual orientation, health, or any other sensitive/personal characteristic.
 - Do not reject someone merely for unconventional or strange interests; thoughtful weirdness is welcome.
 - Judge curiosity, originality, contribution, and specificity only.
-- Return JSON only. No markdown and no extra text.
+- Return ONE compact JSON object only. No markdown, no code fence, no extra text.
 
-Required JSON:
-{"decision":"accept"|"reject","score":0-100,"reason":"one short internal sentence","authenticity_concern":true|false}
+Required JSON shape:
+{"decision":"accept","score":78,"reason":"short internal reason","authenticity_concern":false}
 `.trim();
 
-  const applicantText = QUESTIONS.map((q, i) => `${i + 1}. ${q}\nAnswer: ${answers[i]}`).join("\n\n");
+  const applicantText = QUESTIONS
+    .map((q, i) => `${i + 1}. ${q}\nAnswer: ${answers[i]}`)
+    .join("\n\n");
+
+  // Compatibility-first: deliberately avoid optional reasoning/structured-output
+  // parameters here so the request works across normal API project configurations.
+  const model = DEFAULT_MODEL;
 
   const response = await fetch(OPENAI_URL, {
     method: "POST",
@@ -118,48 +126,36 @@ Required JSON:
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: env.OPENAI_MODEL || DEFAULT_MODEL,
+      model,
       store: false,
-      max_output_tokens: 600,
-      reasoning: { effort: "minimal" },
-      text: {
-        format: {
-          type: "json_schema",
-          name: "butterfly_club_evaluation",
-          strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              decision: { type: "string", enum: ["accept", "reject"] },
-              score: { type: "integer", minimum: 0, maximum: 100 },
-              reason: { type: "string" },
-              authenticity_concern: { type: "boolean" }
-            },
-            required: ["decision", "score", "reason", "authenticity_concern"]
-          }
-        }
-      },
+      max_output_tokens: 400,
       instructions,
       input: applicantText,
     }),
   });
 
-  const data = await response.json();
+  const data = await response.json().catch(() => ({}));
+
   if (!response.ok) {
     const message = data?.error?.message || `OpenAI request failed (${response.status}).`;
     throw new Error(message);
   }
-  const evaluation = parseDecision(getOutputText(data));
+
+  const outputText = getOutputText(data);
+  if (!outputText) {
+    throw new Error("OpenAI returned no text output.");
+  }
+
+  const evaluation = parseDecision(outputText);
 
   if (evaluation.authenticityConcern && evaluation.score < 70) {
     evaluation.decision = "reject";
-    evaluation.reason = "The answers felt too generic or templated to confidently reflect the applicant's own voice.";
+    evaluation.reason =
+      "The answers felt too generic or templated to confidently reflect the applicant's own voice.";
   }
 
   return evaluation;
 }
-
 async function createApplication(env, answers, evaluation) {
   if (!env.DB) throw new Error("D1 database is not configured.");
 
@@ -345,8 +341,17 @@ export default {
 
       return json({ error: "Not found." }, 404, cors);
     } catch (error) {
-      console.error(error);
-      return json({ error: "Something went wrong. Please try again." }, 500, cors);
+      console.error("Butterfly Worker error:", error);
+
+      const safeMessage =
+        error && typeof error.message === "string"
+          ? error.message.slice(0, 300)
+          : "Unknown server error.";
+
+      return json({
+        error: "Something went wrong. Please try again.",
+        detail: safeMessage
+      }, 500, cors);
     }
   },
 };
