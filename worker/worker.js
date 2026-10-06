@@ -175,7 +175,7 @@ async function updateContact(env, applicationId, token, name, phone) {
     UPDATE applications
     SET name = ?, phone = ?, submitted_at = CURRENT_TIMESTAMP, submission_token = NULL
     WHERE id = ?
-  `).bind(name.slice(0, 120), phone.slice(0, 40), applicationId).run();
+  `).bind(name.slice(0, 120), phone.slice(0, 200), applicationId).run();
 
   return true;
 }
@@ -276,7 +276,7 @@ export default {
         const name = typeof body.name === "string" ? body.name.trim() : "";
         const phone = typeof body.phone === "string" ? body.phone.trim() : "";
 
-        if (!Number.isFinite(applicationId) || !submissionToken || name.length < 2 || phone.length < 8) {
+        if (!Number.isFinite(applicationId) || !submissionToken || name.length < 2 || phone.length < 2 || phone.length > 200) {
           return json({ error: "Invalid submission." }, 400, cors);
         }
 
