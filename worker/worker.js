@@ -83,7 +83,13 @@ Rubric:
 - Potential contribution to the room: 25 points
 - Specificity / genuine effort: 15 points
 
-Accept at 65/100 or above, unless the answers are clearly spam, trolling, empty, copied filler, or show no sincere intent to participate.
+Butterfly Club is selective, but the AI is only a first-stage shortlisting assistant, not the final judge.
+Default toward shortlisting sincere, thoughtful applicants.
+Decision rule:
+- Accept at 55/100 or above.
+- For scores 45–54, accept if there is clear curiosity, sincerity, originality, or a concrete contribution.
+- Reject below 45, or when the answers are clearly spam, trolling, empty, copied filler, generic one-liners, or show no sincere intent to participate.
+Human review makes the final decision after shortlisting.
 
 Important:
 - Do not reward prestige, job title, wealth, education, fame, English fluency, or writing polish.
@@ -181,7 +187,8 @@ async function getAdminApplications(env, filter) {
     pending: "status = 'accept' AND review_status = 'pending'",
     approved: "status = 'accept' AND review_status = 'approved'",
     rejected: "status = 'accept' AND review_status = 'rejected'",
-    all: "status = 'accept'",
+    ai_rejected: "status = 'reject'",
+    all: "1 = 1",
   };
   const where = whereMap[filter] || whereMap.pending;
 
@@ -201,7 +208,8 @@ async function getAdminApplications(env, filter) {
       SUM(CASE WHEN status = 'accept' AND review_status = 'pending' THEN 1 ELSE 0 END) AS pending,
       SUM(CASE WHEN status = 'accept' AND review_status = 'approved' THEN 1 ELSE 0 END) AS approved,
       SUM(CASE WHEN status = 'accept' AND review_status = 'rejected' THEN 1 ELSE 0 END) AS rejected,
-      SUM(CASE WHEN status = 'accept' THEN 1 ELSE 0 END) AS total
+      SUM(CASE WHEN status = 'reject' THEN 1 ELSE 0 END) AS ai_rejected,
+      COUNT(*) AS total
     FROM applications
   `).first();
 
@@ -211,6 +219,7 @@ async function getAdminApplications(env, filter) {
       pending: Number(statsRows?.pending || 0),
       approved: Number(statsRows?.approved || 0),
       rejected: Number(statsRows?.rejected || 0),
+      aiRejected: Number(statsRows?.ai_rejected || 0),
       total: Number(statsRows?.total || 0),
     },
   };
