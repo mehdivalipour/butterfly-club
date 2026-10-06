@@ -227,6 +227,17 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    .message.fade-away {
+      animation:
+        messageIn .35s ease both,
+        messageFadeOut 1.8s ease 3.2s forwards;
+    }
+
+    @keyframes messageFadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-3px); }
+    }
+
     .chat-input {
       width: 100%;
       min-height: 52px;
@@ -438,6 +449,12 @@
       div.className = `message ${type}`.trim();
       div.innerHTML = html;
       messages.appendChild(div);
+      return div;
+    }
+
+    function setMessage(html, type = "") {
+      messages.innerHTML = "";
+      return addMessage(html, type);
     }
 
     function clearMessages() {
@@ -584,10 +601,9 @@
 
         if (result.decision === "accept") {
           mode = "name";
-          addMessage("<strong>Accepted.</strong> Your application will be reviewed.");
-          await sleep(1100);
-          addMessage("What's your name?");
+          setMessage("What's your name?");
           answerInput.placeholder = "Your name";
+          answerInput.inputMode = "text";
           chatInput.classList.remove("disabled");
           setInputEnabled(true);
         } else {
@@ -606,25 +622,15 @@
 
     async function handleName(value) {
       window.__butterflyName = value.trim();
-      mode = "phone";
+      mode = "contact";
       answerInput.value = "";
-      addMessage("And your phone number?");
-      answerInput.placeholder = "Your phone number";
-      answerInput.inputMode = "tel";
+      setMessage("How can we reach you?");
+      answerInput.placeholder = "Phone, email, Telegram...";
+      answerInput.inputMode = "text";
       setInputEnabled(true);
     }
 
-    function validPhone(value) {
-      const normalized = value.replace(/[^0-9+]/g, "");
-      return normalized.length >= 8 && normalized.length <= 18;
-    }
-
-    async function handlePhone(value) {
-      if (!validPhone(value)) {
-        addMessage("Please enter a valid phone number.", "error");
-        return;
-      }
-
+    async function handleContact(value) {
       setInputEnabled(false);
       setMicroStatus("Sending...");
 
@@ -633,11 +639,14 @@
         setMicroStatus("");
         mode = "done";
         chatInput.classList.add("hidden");
-        addMessage("<strong>Thank you.</strong> Your application is now in review.");
+        const finalMessage = setMessage("<strong>Thank you.</strong> Your application is now in review.", "fade-away");
+        setTimeout(() => {
+          if (finalMessage?.isConnected) finalMessage.remove();
+        }, 5200);
       } catch (error) {
         console.error(error);
         setMicroStatus("");
-        addMessage("Couldn't save your details. Please try again.", "error");
+        setMessage("Couldn't save your details. Please try again.", "error");
         setInputEnabled(true);
       }
     }
@@ -654,8 +663,8 @@
           return;
         }
         await handleName(value);
-      } else if (mode === "phone") {
-        await handlePhone(value);
+      } else if (mode === "contact") {
+        await handleContact(value);
       }
     }
 
