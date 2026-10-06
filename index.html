@@ -548,7 +548,9 @@
       });
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || "Evaluation failed.");
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || "Evaluation failed.");
+      }
       return data;
     }
 
@@ -617,7 +619,7 @@
         }
       } catch (error) {
         console.error(error);
-        addMessage("Something went wrong. Please try again.", "error");
+        setMessage(`Something went wrong: ${error.message || "Please try again."}`, "error");
         setMicroStatus("");
         chatInput.classList.remove("disabled");
         setInputEnabled(true);
