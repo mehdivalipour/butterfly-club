@@ -611,7 +611,7 @@
         } else {
           mode = "rejected";
           if (result.authenticityConcern) {
-            setMessage("<strong>Not accepted.</strong> Your answers felt too generic or AI-assisted to confidently reflect your own voice. Please reapply in your own words.");
+            setMessage("<strong>Not accepted.</strong> The submitted text appears to contain direct AI-generated response artifacts. Please reapply in your own words.");
           } else {
             setMessage("<strong>Not accepted.</strong> Maybe another time.");
           }
