@@ -95,10 +95,10 @@ Decision rule:
 Human review makes the final decision after shortlisting.
 
 Authenticity check:
-- Do NOT claim that you can reliably detect AI authorship.
-- If the answers feel highly generic, templated, impersonal, or contain broad claims without concrete personal detail, treat that as weak authenticity and specificity.
-- If there are strong signs that the applicant did not answer in their own voice, set authenticity_concern to true.
-- Do not set authenticity_concern merely because the English is grammatically strong or polished.
+- Do NOT infer AI authorship from writing style, polish, generic wording, brevity, grammar, vocabulary, or lack of personal detail.
+- Generic or very short answers should lose points under specificity/genuine effort, but MUST NOT be labeled AI-assisted.
+- Set authenticity_concern to true ONLY when the submitted text itself contains direct, explicit evidence that it was generated as an AI response, such as self-identifying as an AI assistant, leaked prompt/instruction text, or other unmistakable generation artifacts.
+- When in doubt, authenticity_concern MUST be false.
 
 Important:
 - Do not reward prestige, job title, wealth, education, fame, English fluency, or writing polish.
@@ -148,10 +148,10 @@ Required JSON shape:
 
   const evaluation = parseDecision(outputText);
 
-  if (evaluation.authenticityConcern && evaluation.score < 70) {
+  if (evaluation.authenticityConcern) {
     evaluation.decision = "reject";
     evaluation.reason =
-      "The answers felt too generic or templated to confidently reflect the applicant's own voice.";
+      "The submitted text contains direct signs that it was generated as an AI response rather than written as a personal application.";
   }
 
   return evaluation;
